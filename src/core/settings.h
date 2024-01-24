@@ -93,6 +93,7 @@ typedef struct {
     bool format_ts;
     bool osd;
     bool audio;
+    bool placeIntoFolders;
     setting_record_audio_source_t audio_source;
     setting_record_naming_t naming;
 } setting_record_t;
