@@ -28,6 +28,7 @@
 #define KEY_FULL        "full"
 #define KEY_AUDIO       "audio"
 #define KEY_NAMING      "naming"
+#define KEY_FOLDER      "folder"
 
 #define KEY_WIDTH       "width"
 #define KEY_HEIGHT      "height"
@@ -400,11 +401,19 @@ void conf_loadRecordParams(char* confFile, RecordParams_t* para)
     char sTemp[MAX_pathLEN];
 
     long lValue = ini_gets(SEC_RECORD, KEY_DISK, REC_diskPATH, sTemp, sizearray(sTemp), confFile);
+    para->placeIntoFolders = ini_getbool(SEC_RECORD, KEY_FOLDER, true, confFile);
     if( lValue > 0 ) {
+        char dateString[12];
         memset(para->diskPath, 0, sizeof(para->packPath));
         strcpy(para->diskPath, sTemp);
         memset(para->packPath, 0, sizeof(para->packPath));
-        sprintf(para->packPath, "%s%s", para->diskPath, REC_packPATH);
+        memset(dateString, 0, sizeof(dateString));
+        if (para->placeIntoFolders) {
+            const time_t t = time(0);
+            const struct tm* date = localtime(&t);
+            sprintf(dateString, "%04d-%02d-%02d/", date->tm_year + 1900, date->tm_mon + 1, date->tm_mday);
+        }
+        sprintf(para->packPath, "%s%s%s", para->diskPath, REC_packPATH, dateString);
     }
 
     lValue = ini_gets(SEC_RECORD, KEY_TYPE, REC_packTYPE, sTemp, sizearray(sTemp), confFile);
