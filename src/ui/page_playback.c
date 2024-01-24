@@ -216,6 +216,33 @@ static bool dvr_has_stars(const char *filename) {
     return fs_file_exists(star_file);
 }
 
+static int filter(const struct dirent *entry) {
+    if (entry->d_name[0] == '.') {
+        // Skip current directory, parent directory and hidden files
+        return 0;
+    }
+
+    const char *dot = strrchr(entry->d_name, '.');
+    if (dot == NULL) {
+        // Skip files without extension
+        return 0;
+    }
+
+    if (strcasecmp(dot, "." REC_packTS) != 0 && strcasecmp(dot, "." REC_packMP4) != 0) {
+        // Skip files that are not .ts or .mp4 files
+        return 0;
+    }
+
+    char fname[512];
+    sprintf(fname, "%s%s", MEDIA_FILES_DIR, entry->d_name);
+    if ((fs_filesize(fname) >> 20) < 5) {
+        // Skip files that are smaller than 5MiB
+        return 0;
+    }
+
+    return 1;
+}
+
 static int walk_sdcard() {
     char fname[512];
 
@@ -223,35 +250,17 @@ static int walk_sdcard() {
     media_db.cur_sel = 0;
 
     struct dirent **namelist;
-    int count = scandir(MEDIA_FILES_DIR, &namelist, NULL, hot_alphasort);
+    int count = scandir(MEDIA_FILES_DIR, &namelist, filter, hot_alphasort);
     if (count == -1) {
         return 0;
     }
 
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
-        if (in_file->d_name[0] == '.') {
-            continue;
-        }
-
-        const char *dot = strrchr(in_file->d_name, '.');
-        if (dot == NULL) {
-            // '.' not found
-            continue;
-        }
-
-        if (strcasecmp(dot, "." REC_packTS) != 0 && strcasecmp(dot, "." REC_packMP4) != 0) {
-            continue;
-        }
 
         sprintf(fname, "%s%s", MEDIA_FILES_DIR, in_file->d_name);
 
-        long size = fs_filesize(fname);
-        size >>= 20; // in MB
-        if (size < 5) {
-            // skip small files
-            continue;
-        }
+        const char *dot = strrchr(in_file->d_name, '.');
 
         if (media_db.count >= MAX_VIDEO_FILES) {
             LOGI("max video file cnt reached %d,skipped", MAX_VIDEO_FILES);
@@ -267,9 +276,9 @@ static int walk_sdcard() {
         strcpy(pnode->ext, dot + 1);
         pnode->star = dvr_has_stars(fname);
 
-        pnode->size = size;
+        pnode->size = (int)(fs_filesize(fname) >> 20); // in MB;
 
-        LOGI("%d: %s-%dMB", media_db.count, pnode->filename, size);
+        LOGI("%d: %s-%dMB", media_db.count, pnode->filename, pnode->size);
 
         media_db.count++;
     }
