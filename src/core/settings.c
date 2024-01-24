@@ -47,6 +47,7 @@ const setting_t g_setting_defaults = {
         .format_ts = true,
         .osd = true,
         .audio = true,
+        .placeIntoFolders = true,
         .audio_source = SETTING_RECORD_AUDIO_SOURCE_MIC,
         .naming = SETTING_NAMING_CONTIGUOUS,
     },
@@ -394,6 +395,7 @@ void settings_load(void) {
     g_setting.record.format_ts = settings_get_bool("record", "format_ts", g_setting_defaults.record.format_ts);
     g_setting.record.osd = settings_get_bool("record", "osd", g_setting_defaults.record.osd);
     g_setting.record.audio = settings_get_bool("record", "audio", g_setting_defaults.record.audio);
+    g_setting.record.placeIntoFolders = settings_get_bool("record", "folders", g_setting_defaults.record.placeIntoFolders);
     g_setting.record.audio_source = ini_getl("record", "audio_source", g_setting_defaults.record.audio_source, SETTING_INI);
     g_setting.record.naming = ini_getl("record", "naming", g_setting_defaults.record.naming, SETTING_INI);
 

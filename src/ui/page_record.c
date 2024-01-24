@@ -17,9 +17,10 @@ static btn_group_t btn_group_record_osd;
 static btn_group_t btn_group_record_audio;
 static btn_group_t btn_group_audio_source;
 static btn_group_t btn_group_file_naming;
+static btn_group_t btn_group_folders;
 
 static lv_coord_t col_dsc[] = {160, 200, 200, 160, 120, 120, LV_GRID_TEMPLATE_LAST};
-static lv_coord_t row_dsc[] = {60, 60, 60, 60, 60, 60, 60, 60, 60, 60, LV_GRID_TEMPLATE_LAST};
+static lv_coord_t row_dsc[] = {60, 60, 60, 60, 60, 60, 60, 60, 60, 60, 60, LV_GRID_TEMPLATE_LAST};
 
 static void update_visibility() {
     btn_group_enable(&btn_group_audio_source, btn_group_record_audio.current == 0);
@@ -31,11 +32,14 @@ static void update_visibility() {
     }
 
     btn_group_enable(&btn_group_file_naming, rtc_has_battery() == 0);
+    btn_group_enable(&btn_group_folders, rtc_has_battery() == 0);
 
     if (rtc_has_battery() == 0) {
         lv_obj_add_flag(pp_record.p_arr.panel[5], FLAG_SELECTABLE);
+        lv_obj_add_flag(pp_record.p_arr.panel[6], FLAG_SELECTABLE);
     } else {
         lv_obj_clear_flag(pp_record.p_arr.panel[5], FLAG_SELECTABLE);
+        lv_obj_clear_flag(pp_record.p_arr.panel[6], FLAG_SELECTABLE);
     }
 }
 
@@ -72,8 +76,9 @@ static lv_obj_t *page_record_create(lv_obj_t *parent, panel_arr_t *arr) {
     create_btn_group_item(&btn_group_record_audio, cont, 2, _lang("Record Audio"), _lang("Yes"), _lang("No"), "", "", 3);
     create_btn_group_item(&btn_group_audio_source, cont, 3, _lang("Audio Source"), _lang("Mic"), _lang("Line In"), _lang("A/V In"), "", 4);
     create_btn_group_item(&btn_group_file_naming, cont, 2, _lang("Naming Scheme"), _lang("Digits"), _lang("Date"), "", "", 5);
+    create_btn_group_item(&btn_group_folders, cont, 2, "Place into folders", "Yes", "No", "", "", 6);
     sprintf(buf, "< %s", _lang("Back"));
-    create_label_item(cont, buf, 1, 6, 1);
+    create_label_item(cont, buf, 1, 7, 1);
 
     btn_group_set_sel(&btn_group_record_mode, g_setting.record.mode_manual ? 1 : 0);
     btn_group_set_sel(&btn_group_format, g_setting.record.format_ts ? 1 : 0);
@@ -90,7 +95,7 @@ static lv_obj_t *page_record_create(lv_obj_t *parent, panel_arr_t *arr) {
     lv_obj_set_style_pad_top(label2, 12, 0);
     lv_label_set_long_mode(label2, LV_LABEL_LONG_WRAP);
     lv_obj_set_grid_cell(label2, LV_GRID_ALIGN_START, 1, 4,
-                         LV_GRID_ALIGN_START, 7, 3);
+                         LV_GRID_ALIGN_START, 8, 3);
 
     update_visibility();
 
@@ -129,13 +134,19 @@ static void page_record_on_click(uint8_t key, int sel) {
             g_setting.record.naming = btn_group_get_sel(&btn_group_file_naming);
             ini_putl("record", "naming", g_setting.record.naming, SETTING_INI);
         }
+    } else if (sel == 6) {
+        if (rtc_has_battery() == 0) {
+            btn_group_toggle_sel(&btn_group_folders);
+            g_setting.record.naming = btn_group_get_sel(&btn_group_folders);
+            ini_putl("record", "folder", g_setting.record.placeIntoFolders, SETTING_INI);
+        }
     }
 }
 
 page_pack_t pp_record = {
     .p_arr = {
         .cur = 0,
-        .max = 7,
+        .max = 8,
     },
     .name = "Record Option",
     .create = page_record_create,
