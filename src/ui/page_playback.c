@@ -29,7 +29,8 @@ LV_IMG_DECLARE(img_arrow1);
 static lv_coord_t col_dsc[] = {320, 320, 320, LV_GRID_TEMPLATE_LAST};
 static lv_coord_t row_dsc[] = {150, 30, 150, 30, 150, 30, 30, LV_GRID_TEMPLATE_LAST};
 
-static media_db_t media_db;
+static media_file_node_t media_db;
+static int cur_sel = 0;
 static pb_ui_item_t pb_ui[ITEMS_LAYOUT_CNT];
 
 static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
@@ -130,17 +131,27 @@ static void show_pb_item(uint8_t pos, char *label) {
 }
 
 int get_videofile_cnt() {
-    return media_db.count;
+    return media_db.size;
+}
+
+static void clear_media_db() {
+    for (int i = 0; i < media_db.size; i++) {
+        free(media_db.children[i].children);
+    }
+    free(media_db.children);
+    media_db.children = NULL;
+
+    media_db.size = 0;
 }
 
 void clear_videofile_cnt() {
-    media_db.count = 0;
-    media_db.cur_sel = 0;
+    clear_media_db();
+    cur_sel = 0;
 }
 
 static media_file_node_t *get_list(int seq) {
-    int seq_reserve = media_db.count - 1 - seq;
-    return &media_db.list[seq_reserve];
+    int seq_reserve = media_db.size - 1 - seq;
+    return &media_db.children[seq_reserve];
 }
 
 static bool get_seleteced(int seq, char *fname) {
@@ -190,42 +201,48 @@ static int filter(const struct dirent *entry) {
     return 1;
 }
 
-static int walk_sdcard() {
+static int scan_directory(const char* dir, media_file_node_t *node) {
     char fname[512];
 
-    media_db.count = 0;
-    media_db.cur_sel = 0;
-
     struct dirent **namelist;
-    int count = scandir(MEDIA_FILES_DIR, &namelist, filter, hot_alphasort);
+    int count = scandir(dir, &namelist, filter, hot_alphasort);
     if (count == -1) {
         return 0;
     }
 
+    strcpy(node->filename, dir);
+    strcpy(node->label, dir);
+    node->size = 0;
+    node->children = malloc(count * sizeof(media_file_node_t));
+
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
+        if (in_file->d_type == DT_DIR) {
+            LOGI("%s is a directory", in_file->d_name);
+            continue;
+        }
 
-        sprintf(fname, "%s%s", MEDIA_FILES_DIR, in_file->d_name);
+        sprintf(fname, "%s%s", dir, in_file->d_name);
 
         const char *dot = strrchr(in_file->d_name, '.');
 
-        if (media_db.count >= MAX_VIDEO_FILES) {
+        if (i >= MAX_VIDEO_FILES) {
             LOGI("max video file cnt reached %d,skipped", MAX_VIDEO_FILES);
             continue;
         }
 
-        media_file_node_t *pnode = &media_db.list[media_db.count];
+        media_file_node_t *pnode = &node->children[node->size++];
         ZeroMemory(pnode->filename, sizeof(pnode->filename));
         ZeroMemory(pnode->label, sizeof(pnode->label));
         ZeroMemory(pnode->ext, sizeof(pnode->ext));
+        pnode->children = NULL;
+
         strcpy(pnode->filename, in_file->d_name);
         strncpy(pnode->label, in_file->d_name, dot - in_file->d_name);
         strcpy(pnode->ext, dot + 1);
         pnode->size = (int)(fs_filesize(fname) >> 20); // in MB;
 
-        LOGI("%d: %s-%dMB", media_db.count, pnode->filename, pnode->size);
-
-        media_db.count++;
+        LOGI("%d: %s-%dMB", node->size, pnode->filename, pnode->size);
     }
 
     for (size_t i = 0; i < count; i++) {
@@ -233,11 +250,20 @@ static int walk_sdcard() {
     }
     free(namelist);
 
-    // copy all thumbnail files to /tmp
-    sprintf(fname, "cp %s*." REC_packJPG " %s", MEDIA_FILES_DIR, TMP_DIR);
-    system_exec(fname);
+    return node->size;
+}
 
-    return media_db.count;
+static int walk_sdcard() {
+    char cmd[512];
+
+    clear_videofile_cnt();
+    scan_directory(MEDIA_FILES_DIR, &media_db);
+
+    // copy all thumbnail files to /tmp
+    sprintf(cmd, "cp %s*." REC_packJPG " %s", MEDIA_FILES_DIR, TMP_DIR);
+    system_exec(cmd);
+
+    return media_db.size;
 }
 
 static int find_next_available_hot_index() {
@@ -278,13 +304,13 @@ static int find_next_available_hot_index() {
 }
 
 static void update_page() {
-    uint32_t const page_num = (uint32_t)floor((double)media_db.cur_sel / ITEMS_LAYOUT_CNT);
-    uint32_t const end_pos = media_db.count - page_num * ITEMS_LAYOUT_CNT;
-    uint32_t const cur_pos = media_db.cur_sel - page_num * ITEMS_LAYOUT_CNT;
+    uint32_t const page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
+    uint32_t const end_pos = media_db.size - page_num * ITEMS_LAYOUT_CNT;
+    uint32_t const cur_pos = cur_sel - page_num * ITEMS_LAYOUT_CNT;
 
     for (uint8_t i = 0; i < ITEMS_LAYOUT_CNT; i++) {
         uint32_t seq = i + page_num * ITEMS_LAYOUT_CNT;
-        if (seq < media_db.count) {
+        if (seq < media_db.size) {
             media_file_node_t *pnode = get_list(seq);
             if (!pnode) {
                 perror("update_page failed.");
@@ -340,7 +366,7 @@ static void mark_video_file(int const seq) {
     system_exec(cmd);
 
     walk_sdcard();
-    media_db.cur_sel = constrain(seq, 0, (media_db.count - 1));
+    cur_sel = constrain(seq, 0, (media_db.size - 1));
     update_page();
 }
 
@@ -356,7 +382,7 @@ static void delete_video_file(int seq) {
 
     if (system_exec(cmd) != -1) {
         walk_sdcard();
-        media_db.cur_sel = constrain(seq, 0, (media_db.count - 1));
+        cur_sel = constrain(seq, 0, (media_db.size - 1));
         update_page();
         LOGD("delete_video_file successful.");
     } else {
@@ -388,7 +414,7 @@ void pb_key(uint8_t const key) {
 
     // LOGI("onkey:Key=%d,Count=%d",key,media_db.count);
 
-    if (!key || !media_db.count || !done) {
+    if (!key || !media_db.size || !done) {
         return;
     }
 
@@ -403,17 +429,17 @@ void pb_key(uint8_t const key) {
     done = false;
     switch (key) {
     case DIAL_KEY_UP: // up
-        lst_page_num = (uint32_t)floor((double)media_db.cur_sel / ITEMS_LAYOUT_CNT);
-        lst_pos = media_db.cur_sel - lst_page_num * ITEMS_LAYOUT_CNT;
+        lst_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
+        lst_pos = cur_sel - lst_page_num * ITEMS_LAYOUT_CNT;
 
-        if (media_db.cur_sel == (media_db.count - 1)) {
-            media_db.cur_sel = 0;
+        if (cur_sel == (media_db.size - 1)) {
+            cur_sel = 0;
         } else {
-            media_db.cur_sel++;
+            cur_sel++;
         }
 
-        cur_page_num = (uint32_t)floor((double)media_db.cur_sel / ITEMS_LAYOUT_CNT);
-        cur_pos = media_db.cur_sel - cur_page_num * ITEMS_LAYOUT_CNT;
+        cur_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
+        cur_pos = cur_sel - cur_page_num * ITEMS_LAYOUT_CNT;
 
         if (lst_page_num == cur_page_num) {
             update_item(cur_pos, lst_pos);
@@ -423,17 +449,17 @@ void pb_key(uint8_t const key) {
         break;
 
     case DIAL_KEY_DOWN: // down
-        lst_page_num = (uint32_t)floor((double)media_db.cur_sel / ITEMS_LAYOUT_CNT);
-        lst_pos = media_db.cur_sel - lst_page_num * ITEMS_LAYOUT_CNT;
+        lst_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
+        lst_pos = cur_sel - lst_page_num * ITEMS_LAYOUT_CNT;
 
-        if (media_db.cur_sel) {
-            media_db.cur_sel--;
+        if (cur_sel) {
+            cur_sel--;
         } else {
-            media_db.cur_sel = (media_db.count - 1);
+            cur_sel = (media_db.size - 1);
         }
 
-        cur_page_num = (uint32_t)floor((double)media_db.cur_sel / ITEMS_LAYOUT_CNT);
-        cur_pos = media_db.cur_sel - cur_page_num * ITEMS_LAYOUT_CNT;
+        cur_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
+        cur_pos = cur_sel - cur_page_num * ITEMS_LAYOUT_CNT;
 
         if (lst_page_num == cur_page_num) {
             update_item(cur_pos, lst_pos);
@@ -443,7 +469,7 @@ void pb_key(uint8_t const key) {
         break;
 
     case DIAL_KEY_CLICK: // Enter
-        if (get_seleteced(media_db.cur_sel, fname)) {
+        if (get_seleteced(cur_sel, fname)) {
             mplayer_file(fname);
             state = 1;
             app_state_push(APP_STATE_PLAYBACK);
@@ -455,11 +481,11 @@ void pb_key(uint8_t const key) {
         break;
 
     case RIGHT_KEY_CLICK:
-        mark_video_file(media_db.cur_sel);
+        mark_video_file(cur_sel);
         break;
 
     case RIGHT_KEY_PRESS:
-        delete_video_file(media_db.cur_sel);
+        delete_video_file(cur_sel);
         break;
     }
     done = true;
