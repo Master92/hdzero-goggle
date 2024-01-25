@@ -25,19 +25,14 @@ extern "C" {
 
 #define MAX_VIDEO_FILES 999
 
-typedef struct {
+typedef struct media_file_node {
     char filename[64];
     char label[64];
     char ext[16];
     int size;
     bool star;
+    struct media_file_node* children;
 } media_file_node_t;
-
-typedef struct {
-    media_file_node_t list[MAX_VIDEO_FILES];
-    int count;
-    int cur_sel;
-} media_db_t;
 
 typedef struct {
     lv_obj_t *_img;
