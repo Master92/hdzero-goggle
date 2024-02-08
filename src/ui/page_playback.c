@@ -38,6 +38,7 @@ static media_file_node_t media_db;
 static media_file_node_t *currentFolder = &media_db;
 static int cur_sel = 0;
 static pb_ui_item_t pb_ui[ITEMS_LAYOUT_CNT];
+static const char* root_label = "leave folder";
 
 /**
  * Displays the status message box.
@@ -155,7 +156,9 @@ static void show_pb_item(uint8_t pos, media_file_node_t *node) {
     lv_obj_set_pos(pb_ui[pos]._arrow, labelPosX - lv_obj_get_width(pb_ui[pos]._arrow) - 5, labelPosY);
 
     sprintf(fname, "%s/%s." REC_packJPG, TMP_DIR, label);
-    if (node->children != NULL) {
+    if (strcmp(label, root_label) == 0) {
+        osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_ARROW_UP);
+    } else if (node->children != NULL) {
         osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_FOLDER);
     } else if (fs_file_exists(fname)) {
         sprintf(fname, "A:%s/%s." REC_packJPG, TMP_DIR, label);
@@ -294,6 +297,8 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     const size_t dirnameLength = strlen(node->label);
     if (dirnameLength > 0) {
         node->label[dirnameLength - 1] = 0; // Strip trailing '/' from folder names
+    } else {
+        strcpy(node->label, root_label);
     }
     LOGI("Filename: %s\tLabel: %s", node->filename, node->label);
     node->size = count;
@@ -337,6 +342,10 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
         free(namelist[i]);
     }
     free(namelist);
+
+    if (strcmp(node->label, media_db.label) != 0) {
+        strcpy(node->children[node->size++].label, media_db.label);
+    }
 
     return node->size;
 }
@@ -577,6 +586,12 @@ void pb_key(uint8_t const key) {
             status_deleting = page_playback_close_status_box();
         } else {
             media_file_node_t * item = get_list(cur_sel);
+            if (strcmp(item->label, root_label) == 0) {
+                currentFolder = &media_db;
+                cur_sel = 0;
+                update_page();
+                break;
+            }
             if (item->children != NULL) {
                 LOGI("Trying to enter folder %s%s", MEDIA_FILES_DIR, item->label);
                 currentFolder = item;
