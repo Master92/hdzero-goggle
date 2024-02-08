@@ -450,6 +450,10 @@ static void mark_video_file(int const seq) {
     if (!pnode) {
         return;
     }
+    if (pnode->children != NULL) {
+        // trying to mark a folder
+        return;
+    }
     if (strncmp(pnode->filename, REC_hotPREFIX, 4) == 0) {
         // file already marked hot
         return;
@@ -481,7 +485,20 @@ static void delete_video_file(int seq) {
     }
 
     char cmd[128];
-    sprintf(cmd, "rm %s%s.*", MEDIA_FILES_DIR, pnode->label);
+    if (pnode->children != NULL) {
+        if (strcmp(pnode->label, root_label) == 0) {
+            LOGE("delete_video_file failed. Trying to delete the root folder.");
+            return;
+        } else if (pnode->size > 1) {
+            // Parent directory is always a member
+            LOGE("delete_video_file failed. Trying to delete a non-empty folder");
+            return;
+        } else {
+            sprintf(cmd, "rm -rf %s", pnode->filename);
+        }
+    } else {
+        sprintf(cmd, "rm %s%s.*", MEDIA_FILES_DIR, pnode->label);
+    }
 
     if (system_exec(cmd) != -1) {
         walk_sdcard();
