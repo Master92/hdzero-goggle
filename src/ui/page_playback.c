@@ -300,14 +300,12 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     } else {
         strcpy(node->label, root_label);
     }
-    LOGI("Filename: %s\tLabel: %s", node->filename, node->label);
     node->size = count;
     node->children = malloc(count * sizeof(media_file_node_t));
 
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
         if (in_file->d_type == DT_DIR) {
-            LOGI("%s is a directory", in_file->d_name);
             sprintf(fname, "%s%s/", MEDIA_FILES_DIR, in_file->d_name);
             scan_directory(fname, &node->children[i]);
             continue;
@@ -334,7 +332,6 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
         pnode->star = dvr_has_stars(fname);
 
         pnode->size = (int)(fs_filesize(fname) >> 20); // in MB;
-
         LOGI("%d: %s-%dMB", node->size, pnode->filename, pnode->size);
     }
 
