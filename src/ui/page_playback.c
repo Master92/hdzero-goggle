@@ -184,8 +184,14 @@ static void show_pb_item(uint8_t pos, media_file_node_t *node) {
 }
 
 int get_videofile_cnt() {
-    // TODO include subfolders
-    return media_db.size;
+    int size = media_db.size;
+    for (int i = 0; i < media_db.size; i++) {
+        if (media_db.children[i].children != NULL) {
+            size += media_db.children[i].size;
+        }
+    }
+
+    return size;
 }
 
 static void clear_media_db() {
