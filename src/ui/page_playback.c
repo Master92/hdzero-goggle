@@ -35,6 +35,7 @@ static lv_coord_t col_dsc[] = {320, 320, 320, LV_GRID_TEMPLATE_LAST};
 static lv_coord_t row_dsc[] = {150, 30, 150, 30, 150, 30, 30, LV_GRID_TEMPLATE_LAST};
 
 static media_file_node_t media_db;
+static media_file_node_t *currentFolder = &media_db;
 static int cur_sel = 0;
 static pb_ui_item_t pb_ui[ITEMS_LAYOUT_CNT];
 
@@ -134,8 +135,9 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
     return page;
 }
 
-static void show_pb_item(uint8_t pos, char *label, bool star) {
+static void show_pb_item(uint8_t pos, media_file_node_t *node) {
     char fname[256];
+    const char * const label = node->label;
     if (pb_ui[pos].state == ITEM_STATE_INVISIBLE) {
         lv_obj_add_flag(pb_ui[pos]._img, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(pb_ui[pos]._label, LV_OBJ_FLAG_HIDDEN);
@@ -153,10 +155,13 @@ static void show_pb_item(uint8_t pos, char *label, bool star) {
     lv_obj_set_pos(pb_ui[pos]._arrow, labelPosX - lv_obj_get_width(pb_ui[pos]._arrow) - 5, labelPosY);
 
     sprintf(fname, "%s/%s." REC_packJPG, TMP_DIR, label);
-    if (fs_file_exists(fname))
+    if (node->children != NULL) {
+        osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_FOLDER);
+    } else if (fs_file_exists(fname)) {
         sprintf(fname, "A:%s/%s." REC_packJPG, TMP_DIR, label);
-    else
+    } else {
         osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_VIDEOICON);
+    }
     lv_img_set_src(pb_ui[pos]._img, fname);
 
     if (pb_ui[pos].state == ITEM_STATE_HIGHLIGHT) {
@@ -169,7 +174,7 @@ static void show_pb_item(uint8_t pos, char *label, bool star) {
         lv_obj_add_flag(pb_ui[pos]._arrow, LV_OBJ_FLAG_HIDDEN);
     }
 
-    if (star) {
+    if (node->star) {
         lv_obj_clear_flag(pb_ui[pos]._star, LV_OBJ_FLAG_HIDDEN);
     } else {
         lv_obj_add_flag(pb_ui[pos]._star, LV_OBJ_FLAG_HIDDEN);
@@ -179,6 +184,7 @@ static void show_pb_item(uint8_t pos, char *label, bool star) {
 }
 
 int get_videofile_cnt() {
+    // TODO include subfolders
     return media_db.size;
 }
 
@@ -198,8 +204,8 @@ void clear_videofile_cnt() {
 }
 
 static media_file_node_t *get_list(int seq) {
-    int seq_reserve = media_db.size - 1 - seq;
-    return &media_db.children[seq_reserve];
+    int seq_reserve = currentFolder->size - 1 - seq;
+    return &currentFolder->children[seq_reserve];
 }
 
 static bool get_seleteced(int seq, char *fname) {
@@ -213,6 +219,14 @@ static bool get_seleteced(int seq, char *fname) {
 int hot_alphasort(const struct dirent **a, const struct dirent **b) {
     const bool a_hot = strncmp((*a)->d_name, REC_hotPREFIX, 4) == 0;
     const bool b_hot = strncmp((*b)->d_name, REC_hotPREFIX, 4) == 0;
+    const bool a_dir = (*a)->d_type == DT_DIR;
+    const bool b_dir = (*b)->d_type == DT_DIR;
+    if (a_dir && !b_dir) {
+        return 1;
+    }
+    if (!a_dir && b_dir) {
+        return -1;
+    }
     if (a_hot && !b_hot) {
         return -1;
     }
@@ -233,6 +247,10 @@ static int filter(const struct dirent *entry) {
     if (entry->d_name[0] == '.') {
         // Skip current directory, parent directory and hidden files
         return 0;
+    }
+
+    if (entry->d_type == DT_DIR) {
+        return 1;
     }
 
     const char *dot = strrchr(entry->d_name, '.');
@@ -266,14 +284,21 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     }
 
     strcpy(node->filename, dir);
-    strcpy(node->label, dir);
-    node->size = 0;
+    strcpy(node->label, dir + strlen(MEDIA_FILES_DIR));
+    const size_t dirnameLength = strlen(node->label);
+    if (dirnameLength > 0) {
+        node->label[dirnameLength - 1] = 0; // Strip trailing '/' from folder names
+    }
+    LOGI("Filename: %s\tLabel: %s", node->filename, node->label);
+    node->size = count;
     node->children = malloc(count * sizeof(media_file_node_t));
 
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
         if (in_file->d_type == DT_DIR) {
             LOGI("%s is a directory", in_file->d_name);
+            sprintf(fname, "%s%s/", MEDIA_FILES_DIR, in_file->d_name);
+            scan_directory(fname, &node->children[i]);
             continue;
         }
 
@@ -286,7 +311,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
             continue;
         }
 
-        media_file_node_t *pnode = &node->children[node->size++];
+        media_file_node_t *pnode = &node->children[i];
         ZeroMemory(pnode->filename, sizeof(pnode->filename));
         ZeroMemory(pnode->label, sizeof(pnode->label));
         ZeroMemory(pnode->ext, sizeof(pnode->ext));
@@ -362,12 +387,12 @@ static int find_next_available_hot_index() {
 
 static void update_page() {
     uint32_t const page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
-    uint32_t const end_pos = media_db.size - page_num * ITEMS_LAYOUT_CNT;
+    uint32_t const end_pos = currentFolder->size - page_num * ITEMS_LAYOUT_CNT;
     uint32_t const cur_pos = cur_sel - page_num * ITEMS_LAYOUT_CNT;
 
     for (uint8_t i = 0; i < ITEMS_LAYOUT_CNT; i++) {
         uint32_t seq = i + page_num * ITEMS_LAYOUT_CNT;
-        if (seq < media_db.size) {
+        if (seq < currentFolder->size) {
             media_file_node_t *pnode = get_list(seq);
             if (!pnode) {
                 perror("update_page failed.");
@@ -383,10 +408,10 @@ static void update_page() {
             else
                 pb_ui[i].state = ITEM_STATE_INVISIBLE;
 
-            show_pb_item(i, pnode->label, pnode->star);
+            show_pb_item(i, pnode);
         } else {
             pb_ui[i].state = ITEM_STATE_INVISIBLE;
-            show_pb_item(i, NULL, false);
+            show_pb_item(i, NULL);
         }
     }
 }
@@ -429,7 +454,7 @@ static void mark_video_file(int const seq) {
     system_exec(cmd);
 
     walk_sdcard();
-    cur_sel = constrain(seq, 0, (media_db.size - 1));
+    cur_sel = constrain(seq, 0, (currentFolder->size - 1));
     update_page();
 }
 
@@ -445,7 +470,7 @@ static void delete_video_file(int seq) {
 
     if (system_exec(cmd) != -1) {
         walk_sdcard();
-        cur_sel = constrain(seq, 0, (media_db.size - 1));
+        cur_sel = constrain(seq, 0, (currentFolder->size - 1));
         update_page();
         LOGD("delete_video_file successful.");
     } else {
@@ -456,6 +481,7 @@ static void delete_video_file(int seq) {
 static void page_playback_exit() {
     page_playback_close_status_box();
     clear_videofile_cnt();
+    currentFolder = &media_db;
     update_page();
 }
 
@@ -485,7 +511,7 @@ void pb_key(uint8_t const key) {
         return;
     }
 
-    if (!key || !media_db.size || (!done && status_displayed && !status_deleting)) {
+    if (!key || !currentFolder->size || (!done && status_displayed && !status_deleting)) {
         return;
     }
     char text[128];
@@ -499,7 +525,7 @@ void pb_key(uint8_t const key) {
         lst_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
         lst_pos = cur_sel - lst_page_num * ITEMS_LAYOUT_CNT;
 
-        if (cur_sel == (media_db.size - 1)) {
+        if (cur_sel == (currentFolder->size - 1)) {
             cur_sel = 0;
         } else {
             cur_sel++;
@@ -526,7 +552,7 @@ void pb_key(uint8_t const key) {
         if (cur_sel) {
             cur_sel--;
         } else {
-            cur_sel = (media_db.size - 1);
+            cur_sel = (currentFolder->size - 1);
         }
 
         cur_page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
@@ -539,20 +565,38 @@ void pb_key(uint8_t const key) {
         }
         break;
 
-    case DIAL_KEY_CLICK: // Enter
+    case DIAL_KEY_CLICK: { // Enter
         if (status_displayed) {
             delete_video_file(cur_sel);
             status_deleting = page_playback_close_status_box();
-        } else if (get_seleteced(cur_sel, fname)) {
-            mplayer_file(fname);
-            state = 1;
-            app_state_push(APP_STATE_PLAYBACK);
+        } else {
+            media_file_node_t * item = get_list(cur_sel);
+            if (item->children != NULL) {
+                LOGI("Trying to enter folder %s%s", MEDIA_FILES_DIR, item->label);
+                currentFolder = item;
+                cur_sel = 0;
+                update_page();
+                break;
+            }
+            if (get_seleteced(cur_sel, fname)) {
+                mplayer_file(fname);
+                state = 1;
+                app_state_push(APP_STATE_PLAYBACK);
+            }
         }
         break;
+    }
 
     case DIAL_KEY_PRESS: // long press
-        status_deleting = page_playback_close_status_box();
-        page_playback_exit();
+        if (status_deleting) {
+            status_deleting = page_playback_close_status_box();
+        } else if (currentFolder != &media_db) {
+            currentFolder = &media_db;
+            cur_sel = 0;
+            update_page();
+        } else {
+            page_playback_exit();
+        }
         break;
 
     case RIGHT_KEY_CLICK:
