@@ -154,6 +154,27 @@ static void page_source_select_module() {
     dvr_enable_line_out(true);
 }
 
+void cycle_source() {
+    switch(g_source_info.source) {
+    case SOURCE_HDZERO:
+        if (g_source_info.hdmi_in_status) {
+            page_source_select_hdmi();
+        } else {
+            page_source_select_av_in();
+        }
+        break;
+    case SOURCE_HDMI_IN:
+        page_source_select_av_in();
+        break;
+    case SOURCE_AV_IN:
+        page_source_select_module();
+        break;
+    case SOURCE_EXPANSION:
+        page_source_select_hdzero();
+        break;
+    }
+}
+
 static void page_source_on_click(uint8_t key, int sel) {
     switch (sel) {
     case 0:

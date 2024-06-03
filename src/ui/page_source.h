@@ -11,6 +11,7 @@ extern "C" {
 extern page_pack_t pp_source;
 
 void source_status_timer();
+void cycle_source();
 
 #ifdef __cplusplus
 }
