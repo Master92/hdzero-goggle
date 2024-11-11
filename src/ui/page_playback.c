@@ -137,8 +137,6 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
 }
 
 static void show_pb_item(uint8_t pos, media_file_node_t *node) {
-    char fname[256];
-    const char * const label = node->label;
     if (pb_ui[pos].state == ITEM_STATE_INVISIBLE) {
         lv_obj_add_flag(pb_ui[pos]._img, LV_OBJ_FLAG_HIDDEN);
         lv_obj_add_flag(pb_ui[pos]._label, LV_OBJ_FLAG_HIDDEN);
@@ -147,6 +145,12 @@ static void show_pb_item(uint8_t pos, media_file_node_t *node) {
         return;
     }
 
+	if (node == NULL) {
+        return;
+    }
+
+    char fname[256];
+	const char * const label = node->label;
     lv_label_set_text(pb_ui[pos]._label, label);
     lv_obj_clear_flag(pb_ui[pos]._label, LV_OBJ_FLAG_HIDDEN);
 
