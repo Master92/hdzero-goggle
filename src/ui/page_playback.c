@@ -229,7 +229,7 @@ static bool get_seleteced(int seq, char *fname) {
     media_file_node_t *pnode = get_list(seq);
     if (!pnode)
         return false;
-    sprintf(fname, "%s%s", MEDIA_FILES_DIR, pnode->filename);
+    sprintf(fname, "%s%s", pnode->parent->filename, pnode->filename);
     return true;
 }
 
