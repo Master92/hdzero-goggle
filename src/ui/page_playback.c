@@ -289,6 +289,7 @@ static int filter(const struct dirent *entry) {
 
 static int scan_directory(const char* dir, media_file_node_t *node) {
     char fname[512];
+    const bool isRootScan = node == &media_db;
 
     struct dirent **namelist;
     int count = scandir(dir, &namelist, filter, hot_alphasort);
@@ -305,7 +306,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
         strcpy(node->label, root_label);
     }
     node->size = count;
-    node->children = malloc(count * sizeof(media_file_node_t));
+    node->children = malloc((count + (!isRootScan ?: 0)) * sizeof(media_file_node_t));
 
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
@@ -344,7 +345,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     }
     free(namelist);
 
-    if (strcmp(node->label, media_db.label) != 0) {
+    if (!isRootScan) {
         strcpy(node->children[node->size++].label, media_db.label);
     }
 
