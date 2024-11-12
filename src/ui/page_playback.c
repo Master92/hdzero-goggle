@@ -614,7 +614,7 @@ void pb_key(uint8_t const key) {
         } else {
             media_file_node_t * item = get_list(cur_sel);
             if (strcmp(item->label, root_label) == 0) {
-                currentFolder = &media_db;
+                currentFolder = currentFolder->parent;
                 cur_sel = 0;
                 update_page();
                 break;
