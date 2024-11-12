@@ -137,6 +137,10 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
 
     media_db.parent = NULL;
 
+    if (!fs_path_exists(THUMBNAIL_TMP)) {
+        system_exec("mkdir -p " THUMBNAIL_TMP);
+    }
+
     return page;
 }
 
@@ -163,13 +167,13 @@ static void show_pb_item(uint8_t pos, media_file_node_t *node) {
     lv_obj_set_pos(pb_ui[pos]._label, labelPosX, labelPosY);
     lv_obj_set_pos(pb_ui[pos]._arrow, labelPosX - lv_obj_get_width(pb_ui[pos]._arrow) - 5, labelPosY);
 
-    sprintf(fname, "%s/%s." REC_packJPG, TMP_DIR, label);
+    sprintf(fname, "%s/%s." REC_packJPG, THUMBNAIL_TMP, label);
     if (strcmp(label, root_label) == 0) {
         osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_ARROW_UP);
     } else if (node->children != NULL) {
         osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_FOLDER);
     } else if (fs_file_exists(fname)) {
-        sprintf(fname, "A:%s/%s." REC_packJPG, TMP_DIR, label);
+        sprintf(fname, "A:%s/%s." REC_packJPG, THUMBNAIL_TMP, label);
     } else {
         osd_resource_path(fname, "%s", OSD_RESOURCE_720, DEF_VIDEOICON);
     }
@@ -360,15 +364,24 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     return node->size;
 }
 
+static void cleanup_thumbnails() {
+    const char * cmd = "rm " THUMBNAIL_TMP "/*." REC_packJPG;
+    system_exec(cmd);
+}
+
+static void copy_thumbnails(const struct media_file_node * const node) {
+    char cmd[512];
+
+    cleanup_thumbnails();
+    sprintf(cmd, "cp %s*." REC_packJPG " %s", node->filename, THUMBNAIL_TMP);
+    system_exec(cmd);
+}
+
 static int walk_sdcard() {
     char cmd[512];
 
     clear_videofile_cnt();
     scan_directory(MEDIA_FILES_DIR, &media_db);
-
-    // copy all thumbnail files to /tmp
-    sprintf(cmd, "cp %s*." REC_packJPG " %s", MEDIA_FILES_DIR, TMP_DIR);
-    system_exec(cmd);
 
     return media_db.size;
 }
@@ -523,12 +536,14 @@ static void delete_video_file(int seq) {
 static void page_playback_exit() {
     page_playback_close_status_box();
     clear_videofile_cnt();
+    cleanup_thumbnails();
     currentFolder = &media_db;
     update_page();
 }
 
 static void page_playback_enter() {
     const int ret = walk_sdcard();
+    copy_thumbnails(&media_db);
     update_page();
 
     if (ret == 0) {
@@ -616,6 +631,7 @@ void pb_key(uint8_t const key) {
             if (strcmp(item->label, root_label) == 0) {
                 currentFolder = currentFolder->parent;
                 cur_sel = 0;
+                copy_thumbnails(currentFolder);
                 update_page();
                 break;
             }
@@ -623,6 +639,7 @@ void pb_key(uint8_t const key) {
                 LOGI("Trying to enter folder %s%s", MEDIA_FILES_DIR, item->label);
                 currentFolder = item;
                 cur_sel = 0;
+                copy_thumbnails(currentFolder);
                 update_page();
                 break;
             }
