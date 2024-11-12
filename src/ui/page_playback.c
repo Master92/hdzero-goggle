@@ -319,7 +319,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
 
         struct dirent *in_file = namelist[i];
         if (in_file->d_type == DT_DIR) {
-            sprintf(fname, "%s%s/", MEDIA_FILES_DIR, in_file->d_name);
+            sprintf(fname, "%s%s/", node->filename, in_file->d_name);
             scan_directory(fname, &node->children[i]);
             continue;
         }
