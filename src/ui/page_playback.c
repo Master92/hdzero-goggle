@@ -315,6 +315,8 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     node->star = false;
 
     for (size_t i = 0; i < count; i++) {
+        node->children[i].parent = node;
+
         struct dirent *in_file = namelist[i];
         if (in_file->d_type == DT_DIR) {
             sprintf(fname, "%s%s/", MEDIA_FILES_DIR, in_file->d_name);
@@ -337,7 +339,6 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
         ZeroMemory(pnode->ext, sizeof(pnode->ext));
         pnode->children = NULL;
 
-        pnode->parent = node;
         strcpy(pnode->filename, in_file->d_name);
         strncpy(pnode->label, in_file->d_name, dot - in_file->d_name);
         strcpy(pnode->ext, dot + 1);
