@@ -8,6 +8,7 @@ extern "C" {
 #include "ui/ui_style.h"
 
 #define TMP_DIR             "/tmp"
+#define THUMBNAIL_TMP       TMP_DIR "/thm"
 #define AUDIO_SEL_SH        "/mnt/app/script/audio_sel.sh"
 #define SETTING_INI_VERSION 1
 #ifndef EMULATOR_BUILD
