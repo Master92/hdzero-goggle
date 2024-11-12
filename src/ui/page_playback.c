@@ -303,7 +303,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     }
 
     strcpy(node->filename, dir);
-    strcpy(node->label, dir + strlen(MEDIA_FILES_DIR));
+    strcpy(node->label, dir + strlen((isRootScan ? MEDIA_FILES_DIR : node->parent->filename)));
     const size_t dirnameLength = strlen(node->label);
     if (dirnameLength > 0) {
         node->label[dirnameLength - 1] = 0; // Strip trailing '/' from folder names
