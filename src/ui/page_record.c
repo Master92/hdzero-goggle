@@ -138,7 +138,7 @@ static void page_record_on_click(uint8_t key, int sel) {
         if (rtc_has_battery() == 0) {
             btn_group_toggle_sel(&btn_group_folders);
             g_setting.record.naming = btn_group_get_sel(&btn_group_folders);
-            ini_putl("record", "folder", g_setting.record.placeIntoFolders, SETTING_INI);
+            ini_putl("record", "folders", g_setting.record.placeIntoFolders, SETTING_INI);
         }
     }
 }
