@@ -309,6 +309,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     }
     node->size = count;
     node->children = malloc((count + (!isRootScan ?: 0)) * sizeof(media_file_node_t));
+    node->star = false;
 
     for (size_t i = 0; i < count; i++) {
         struct dirent *in_file = namelist[i];
