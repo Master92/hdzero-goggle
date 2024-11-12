@@ -161,7 +161,7 @@ static void dvr_update_record_conf() {
     }
 
     ini_putl("record", "audio", g_setting.record.audio, REC_CONF);
-    ini_putl("record", "folder", g_setting.record.placeIntoFolders, REC_CONF);
+    ini_putl("record", "folders", g_setting.record.placeIntoFolders, REC_CONF);
     dvr_select_audio_source(g_setting.record.audio_source);
     ini_putl("record", "naming", g_setting.record.naming, REC_CONF);
 }
