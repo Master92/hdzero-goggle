@@ -28,7 +28,7 @@
 #define KEY_FULL        "full"
 #define KEY_AUDIO       "audio"
 #define KEY_NAMING      "naming"
-#define KEY_FOLDER      "folder"
+#define KEY_FOLDER      "folders"
 
 #define KEY_WIDTH       "width"
 #define KEY_HEIGHT      "height"
