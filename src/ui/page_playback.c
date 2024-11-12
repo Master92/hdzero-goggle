@@ -39,6 +39,7 @@ static media_file_node_t *currentFolder = &media_db;
 static int cur_sel = 0;
 static pb_ui_item_t pb_ui[ITEMS_LAYOUT_CNT];
 static const char* root_label = "leave folder";
+static char current_filter_dir[256] = "";
 
 /**
  * Displays the status message box.
@@ -278,7 +279,7 @@ static int filter(const struct dirent *entry) {
     }
 
     char fname[512];
-    sprintf(fname, "%s%s", MEDIA_FILES_DIR, entry->d_name);
+    sprintf(fname, "%s%s", current_filter_dir, entry->d_name);
     if ((fs_filesize(fname) >> 20) < 5) {
         // Skip files that are smaller than 5MiB
         return 0;
@@ -292,6 +293,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
     const bool isRootScan = node == &media_db;
 
     struct dirent **namelist;
+    strcpy(current_filter_dir, dir);
     int count = scandir(dir, &namelist, filter, hot_alphasort);
     if (count == -1) {
         return 0;
