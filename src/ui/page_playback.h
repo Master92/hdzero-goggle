@@ -31,6 +31,7 @@ typedef struct media_file_node {
     char ext[16];
     int size;
     bool star;
+    struct media_file_node* parent;
     struct media_file_node* children;
 } media_file_node_t;
 

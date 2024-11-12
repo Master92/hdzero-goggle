@@ -134,6 +134,9 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
     lv_obj_set_pos(label, 10, 700);
     status = create_msgbox_item("Status", "None");
     lv_obj_add_flag(status, LV_OBJ_FLAG_HIDDEN);
+
+    media_db.parent = NULL;
+
     return page;
 }
 
@@ -334,6 +337,7 @@ static int scan_directory(const char* dir, media_file_node_t *node) {
         ZeroMemory(pnode->ext, sizeof(pnode->ext));
         pnode->children = NULL;
 
+        pnode->parent = node;
         strcpy(pnode->filename, in_file->d_name);
         strncpy(pnode->label, in_file->d_name, dot - in_file->d_name);
         strcpy(pnode->ext, dot + 1);
