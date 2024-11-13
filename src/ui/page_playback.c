@@ -581,7 +581,7 @@ void pb_key(uint8_t const key) {
     if (!key || !currentFolder->size || (!done && status_displayed && !status_deleting)) {
         return;
     }
-    char text[128];
+
     done = false;
     switch (key) {
     case DIAL_KEY_UP: // up
@@ -684,8 +684,17 @@ void pb_key(uint8_t const key) {
 
     case RIGHT_KEY_PRESS:
         if (!status_displayed) {
-            snprintf(text, sizeof(text), "%s", "Click center of dial to continue.\nClick function(right button) or scroll to exit.");
-            page_playback_open_status_box("Are you sure you want to DELETE the file", text);
+            char text[128];
+            char title[128];
+
+            if (get_list(cur_sel)->children != NULL) {
+                snprintf(text, sizeof(text), "%s", "You are trying to delete a folder that is not empty.\nThis operation is not permitted.");
+                snprintf(title, sizeof(title), "%s", "Cannot delete non-empty folder");
+            } else {
+                snprintf(text, sizeof(text), "%s", "Click center of dial to continue.\nClick function(right button) or scroll to exit.");
+                snprintf(title, sizeof(title), "%s", "Are you sure you want to DELETE the file/folder");
+            }
+            page_playback_open_status_box(title, text);
             status_deleting = true;
         } else {
             page_playback_close_status_box();
