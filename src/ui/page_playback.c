@@ -137,6 +137,7 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
     lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
     lv_obj_set_pos(label, 10, 700);
     status = create_msgbox_item("Status", "None");
+    lv_obj_set_width(status, 700);
     lv_obj_add_flag(status, LV_OBJ_FLAG_HIDDEN);
 
     media_db.parent = NULL;
