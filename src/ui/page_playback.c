@@ -34,6 +34,8 @@ LV_IMG_DECLARE(img_arrow1);
 static lv_coord_t col_dsc[] = {320, 320, 320, LV_GRID_TEMPLATE_LAST};
 static lv_coord_t row_dsc[] = {150, 30, 150, 30, 150, 30, 30, LV_GRID_TEMPLATE_LAST};
 
+static lv_obj_t* header_label = NULL;
+
 static media_file_node_t media_db;
 static media_file_node_t *currentFolder = &media_db;
 static int cur_sel = 0;
@@ -78,8 +80,10 @@ static lv_obj_t *page_playback_create(lv_obj_t *parent, panel_arr_t *arr) {
     lv_obj_add_style(section, &style_submenu, LV_PART_MAIN);
     lv_obj_set_size(section, 1142, 894);
 
+    struct menu_obj_s textTmp;
     sprintf(buf, "%s:", _lang("Playback"));
-    create_text(NULL, section, false, buf, LV_MENU_ITEM_BUILDER_VARIANT_2);
+    create_text(&textTmp, section, false, buf, LV_MENU_ITEM_BUILDER_VARIANT_2);
+    header_label = lv_obj_get_child(textTmp.cont, 0);
 
     lv_obj_t *cont = lv_obj_create(section);
     lv_obj_set_size(cont, 1164, 760);
@@ -427,6 +431,12 @@ static void update_page() {
     uint32_t const page_num = (uint32_t)floor((double)cur_sel / ITEMS_LAYOUT_CNT);
     uint32_t const end_pos = currentFolder->size - page_num * ITEMS_LAYOUT_CNT;
     uint32_t const cur_pos = cur_sel - page_num * ITEMS_LAYOUT_CNT;
+    char tmp_string[256];
+    char buf[128];
+
+    sprintf(buf, "%s:", _lang("Playback"));
+    sprintf(tmp_string, "%s %s", buf, &currentFolder->filename[strlen(REC_diskPATH)]);
+    lv_label_set_text(header_label, tmp_string);
 
     for (uint8_t i = 0; i < ITEMS_LAYOUT_CNT; i++) {
         uint32_t seq = i + page_num * ITEMS_LAYOUT_CNT;
