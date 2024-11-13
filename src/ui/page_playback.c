@@ -517,7 +517,7 @@ static void delete_video_file(int seq) {
         return;
     }
 
-    char cmd[128];
+    char cmd[256];
     if (pnode->children != NULL) {
         if (strcmp(pnode->label, root_label) == 0) {
             LOGE("delete_video_file failed. Trying to delete the root folder.");
@@ -530,7 +530,7 @@ static void delete_video_file(int seq) {
             sprintf(cmd, "rm -rf %s", pnode->filename);
         }
     } else {
-        sprintf(cmd, "rm %s%s.*", MEDIA_FILES_DIR, pnode->label);
+        sprintf(cmd, "rm %s%s.*", currentFolder->filename, pnode->label);
     }
 
     if (system_exec(cmd) != -1) {
