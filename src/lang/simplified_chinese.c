@@ -105,6 +105,7 @@ const translate_t translate_simplified_chinese[TRANSLATE_STRING_NUM] = {
     {"Record Audio", "录制音频"},
     {"Audio Source", "音频源"},
     {"Naming Scheme", "命名规则"},
+    {"Place into folders", "放入文件夹"},
     {"Yes", "开"},
     {"No", "关"},
     {"Mic", "麦克风"},

@@ -76,7 +76,7 @@ static lv_obj_t *page_record_create(lv_obj_t *parent, panel_arr_t *arr) {
     create_btn_group_item(&btn_group_record_audio, cont, 2, _lang("Record Audio"), _lang("Yes"), _lang("No"), "", "", 3);
     create_btn_group_item(&btn_group_audio_source, cont, 3, _lang("Audio Source"), _lang("Mic"), _lang("Line In"), _lang("A/V In"), "", 4);
     create_btn_group_item(&btn_group_file_naming, cont, 2, _lang("Naming Scheme"), _lang("Digits"), _lang("Date"), "", "", 5);
-    create_btn_group_item(&btn_group_folders, cont, 2, "Place into folders", "Yes", "No", "", "", 6);
+    create_btn_group_item(&btn_group_folders, cont, 2, _lang("Place into folders"), _lang("Yes"), _lang("No"), "", "", 6);
     sprintf(buf, "< %s", _lang("Back"));
     create_label_item(cont, buf, 1, 7, 1);
 

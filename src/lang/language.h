@@ -5,7 +5,7 @@
 
 #include "core/settings.h"
 
-#define TRANSLATE_STRING_NUM 273
+#define TRANSLATE_STRING_NUM 274
 
 typedef enum {
     LANG_ENGLISH_DEFAULT = 0,
